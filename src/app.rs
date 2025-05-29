@@ -4,15 +4,10 @@ use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment,
 };
+use wasm_bindgen::JsCast;
+use web_sys::{FormData, HtmlFormElement, SubmitEvent};
 use leptos::logging::log;
-// use wasm_bindgen::prelude::*;
-
-#[server]
-pub async fn print_value(value: String) -> Result<String, ServerFnError> {
-    println!("Received value from client: {}", value);
-    log!("Received value from client: {}", value);
-    Ok(format!("Server received: {}", value))
-}
+use crate::server_functions::*;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -77,6 +72,17 @@ fn HomePage() -> impl IntoView {
         });
     };
 
+    let on_submit = move |ev: SubmitEvent| {
+        ev.prevent_default();
+        let target = ev.target().unwrap().unchecked_into::<HtmlFormElement>();
+        let form_data = FormData::new_with_form(&target).unwrap();
+        let file = form_data
+            .get("file_to_upload")
+            .unchecked_into::<web_sys::File>();
+        let filename = file.name();
+        log!("{}", filename);
+    };
+
     view! {
         <h1>"Welcome to Leptos!"</h1>
         <div>
@@ -97,6 +103,12 @@ fn HomePage() -> impl IntoView {
             <div style="margin-top: 10px;">
                 <p>"Server Response: " {response}</p>
             </div>
+        </div>
+        <div style="margin-top: 20px;">
+            <form on:submit=on_submit>
+                <input type="file" name="file_to_upload" />
+                <input type="submit" />
+            </form>
         </div>
     }
 }
