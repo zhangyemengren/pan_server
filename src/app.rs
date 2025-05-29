@@ -1,9 +1,18 @@
-use leptos::prelude::*;
+use leptos::{prelude::*, task::spawn_local};
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment,
 };
+use leptos::logging::log;
+// use wasm_bindgen::prelude::*;
+
+#[server]
+pub async fn print_value(value: String) -> Result<String, ServerFnError> {
+    println!("Received value from client: {}", value);
+    log!("Received value from client: {}", value);
+    Ok(format!("Server received: {}", value))
+}
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -54,8 +63,40 @@ fn HomePage() -> impl IntoView {
     let count = RwSignal::new(0);
     let on_click = move |_| *count.write() += 1;
 
+    // For the POST request
+    let input_value = RwSignal::new(String::new());
+    let response = RwSignal::new(String::new());
+
+    // Function to handle the POST request using reqwest
+    let send_post_request = move |_| {
+        let value = input_value.get();
+        spawn_local(async move {
+            // Create a client
+            let res = print_value(value).await.unwrap();
+            response.set(res);
+        });
+    };
+
     view! {
         <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+        <div>
+            <button on:click=on_click>"Click Me: " {count}</button>
+        </div>
+        <div style="margin-top: 20px;">
+            <h2>"Send POST Request to Server"</h2>
+            <input 
+                type="text" 
+                placeholder="Enter value to send" 
+                on:input=move |ev| {
+                    let value = event_target_value(&ev);
+                    input_value.set(value);
+                }
+                prop:value=input_value
+            />
+            <button on:click=send_post_request>"Send to Server"</button>
+            <div style="margin-top: 10px;">
+                <p>"Server Response: " {response}</p>
+            </div>
+        </div>
     }
 }
