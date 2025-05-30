@@ -56,7 +56,10 @@ pub fn App() -> impl IntoView {
 fn HomePage() -> impl IntoView {
     const GRID_SIZE: usize = 5;
     let (in_use_boxes, set_in_use_boxes) = signal::<Vec<BoxStatus>>(vec![]);
-    let on_click = move |_| {
+    let on_box_click = move |box_status: BoxStatus| {
+        log!("Box clicked: {:?}", box_status);
+    };
+    let on_box_check = move |_| {
         spawn_local(async move {
             let response = check_box_status().await.unwrap();
             log!("Response: {:?}", response);
@@ -78,28 +81,38 @@ fn HomePage() -> impl IntoView {
         });
     };
 
-    // Create a 5x5 grid with some cells filled and some empty
-    // The grid generation is now directly inside the view macro for reactivity.
     view! {
         <div class="grid-container">
             {(0..GRID_SIZE).map(move |row| {
                 (0..GRID_SIZE).map(move |col| {
+                    let current_id = (row * GRID_SIZE + col) as u8;
+                    let box_info = Memo::new(move |_| {
+                        in_use_boxes.get().iter().find(|b| b.id == current_id).cloned()
+                    });
+
                     let cell_class = move || {
-                        let box_list = in_use_boxes.get(); // Reactive read
-                        if box_list.iter().any(|b| b.id == (row * GRID_SIZE + col) as u8) {
-                            "grid-cell filled"
-                        } else {
-                            "grid-cell empty"
+                        match box_info.get() {
+                            Some(status) if status.in_use => "grid-cell filled",
+                            _ => "grid-cell empty",
                         }
                     };
+                    
                     view! {
-                        <div class=cell_class></div>
+                        <div
+                            class=cell_class
+                            on:click=move |_| {
+                                if let Some(info) = box_info.get() {
+                                    on_box_click(info);
+                                }
+                            }
+                        >
+                        </div>
                     }
                 }).collect_view()
             }).collect_view()}
         </div>
         <div>
-            <button on:click=on_click>
+            <button on:click=on_box_check>
                 "Check Box Status"
             </button>
         </div>

@@ -11,6 +11,7 @@ leptos = { version = "0.8.0" }
 leptos_router = { version = "0.8.0" }
 server_fn = {version = "0.8.0", features = ["multipart"]}
 serde = { version = "1.0", features = ["derive"] }
+rand = { version = "0.9.0", optional = true }
 axum = { version = "0.8.0", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
 leptos_axum = { version = "0.8.0", optional = true }
@@ -29,6 +30,7 @@ ssr = [
     "dep:axum",
     "dep:tokio",
     "dep:leptos_axum",
+    "dep:rand",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
