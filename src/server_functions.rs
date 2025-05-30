@@ -1,15 +1,33 @@
 use leptos::prelude::*;
 use leptos::logging::log;
-use leptos::server_fn::codec::{MultipartFormData, MultipartData};
+use server_fn::codec::{MultipartFormData, MultipartData, Json};
+use serde::{Deserialize, Serialize};
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::PathBuf;
 
-#[server]
-pub async fn print_value(value: String) -> Result<String, ServerFnError> {
-    println!("Received value from client: {}", value);
-    log!("Received value from client: {}", value);
-    Ok(format!("Server received: {}", value))
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CheckResponse{
+    pub list: Vec<BoxStatus>
+}
+impl CheckResponse{
+    pub fn new() -> CheckResponse{
+        CheckResponse{list: Vec::new()}
+    }
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BoxStatus{
+    pub id: u8,
+    pub name: String,
+}
+
+#[server(output = Json)]
+pub async fn check_box_status() -> Result<CheckResponse, ServerFnError>{
+    let mut list = CheckResponse::new();
+    list.list.push(BoxStatus{id: 0, name: "Box 1".to_string()});
+    list.list.push(BoxStatus{id: 5, name: "Box 1".to_string()});
+    Ok(list)
 }
 
 #[server(input = MultipartFormData)]

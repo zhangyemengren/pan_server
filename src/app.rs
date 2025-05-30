@@ -54,21 +54,13 @@ pub fn App() -> impl IntoView {
 /// Renders the home page of your application.
 #[component]
 fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
-
-    // For the POST request
-    let input_value = RwSignal::new(String::new());
-    let response = RwSignal::new(String::new());
-
-    // Function to handle the POST request using reqwest
-    let send_post_request = move |_| {
-        let value = input_value.get();
+    const GRID_SIZE: usize = 5;
+    let (in_use_boxes, set_in_use_boxes) = signal::<Vec<BoxStatus>>(vec![]);
+    let on_click = move |_| {
         spawn_local(async move {
-            // Create a client
-            let res = print_value(value).await.unwrap();
-            response.set(res);
+            let response = check_box_status().await.unwrap();
+            log!("Response: {:?}", response);
+            set_in_use_boxes.set(response.list);
         });
     };
 
@@ -86,26 +78,30 @@ fn HomePage() -> impl IntoView {
         });
     };
 
+    // Create a 5x5 grid with some cells filled and some empty
+    // The grid generation is now directly inside the view macro for reactivity.
     view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <div>
-            <button on:click=on_click>"Click Me: " {count}</button>
+        <div class="grid-container">
+            {(0..GRID_SIZE).map(move |row| {
+                (0..GRID_SIZE).map(move |col| {
+                    let cell_class = move || {
+                        let box_list = in_use_boxes.get(); // Reactive read
+                        if box_list.iter().any(|b| b.id == (row * GRID_SIZE + col) as u8) {
+                            "grid-cell filled"
+                        } else {
+                            "grid-cell empty"
+                        }
+                    };
+                    view! {
+                        <div class=cell_class></div>
+                    }
+                }).collect_view()
+            }).collect_view()}
         </div>
-        <div style="margin-top: 20px;">
-            <h2>"Send POST Request to Server"</h2>
-            <input 
-                type="text" 
-                placeholder="Enter value to send" 
-                on:input=move |ev| {
-                    let value = event_target_value(&ev);
-                    input_value.set(value);
-                }
-                prop:value=input_value
-            />
-            <button on:click=send_post_request>"Send to Server"</button>
-            <div style="margin-top: 10px;">
-                <p>"Server Response: " {response}</p>
-            </div>
+        <div>
+            <button on:click=on_click>
+                "Check Box Status"
+            </button>
         </div>
         <div style="margin-top: 20px;">
             <form on:submit=on_submit>

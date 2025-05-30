@@ -1,0 +1,38 @@
+body {
+	font-family: sans-serif;
+	text-align: center;
+}
+
+/* Grid container styles */
+.grid-container {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	grid-template-rows: repeat(5, 1fr);
+	gap: 10px;
+	width: 500px;
+	height: 500px;
+	margin: 0 auto;
+	padding: 10px;
+	background-color: #f0f0f0;
+	border-radius: 5px;
+}
+
+/* Common grid cell styles */
+.grid-cell {
+	width: 100%;
+	height: 100%;
+	border-radius: 3px;
+	transition: all 0.3s ease;
+}
+
+/* Filled cell style */
+.grid-cell.filled {
+	background-color: #4a90e2;
+	border: 1px solid #3a80d2;
+}
+
+/* Empty cell style */
+.grid-cell.empty {
+	background-color: #ffffff;
+	border: 1px solid #dddddd;
+}
