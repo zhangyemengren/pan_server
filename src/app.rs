@@ -81,6 +81,9 @@ fn HomePage() -> impl IntoView {
             .unchecked_into::<web_sys::File>();
         let filename = file.name();
         log!("{}", filename);
+        spawn_local(async move {
+            upload_file(form_data.into()).await.unwrap();
+        });
     };
 
     view! {
