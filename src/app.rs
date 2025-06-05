@@ -4,15 +4,10 @@ use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment,
 };
+use wasm_bindgen::JsCast;
+use web_sys::{FormData, HtmlFormElement, SubmitEvent};
 use leptos::logging::log;
-// use wasm_bindgen::prelude::*;
-
-#[server]
-pub async fn print_value(value: String) -> Result<String, ServerFnError> {
-    println!("Received value from client: {}", value);
-    log!("Received value from client: {}", value);
-    Ok(format!("Server received: {}", value))
-}
+use crate::server_functions::*;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -59,44 +54,89 @@ pub fn App() -> impl IntoView {
 /// Renders the home page of your application.
 #[component]
 fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
-
-    // For the POST request
-    let input_value = RwSignal::new(String::new());
-    let response = RwSignal::new(String::new());
-
-    // Function to handle the POST request using reqwest
-    let send_post_request = move |_| {
-        let value = input_value.get();
+    const GRID_SIZE: usize = 5;
+    let (in_use_boxes, set_in_use_boxes) = signal::<Vec<BoxStatus>>(vec![]);
+    let on_box_click = move |box_status: BoxStatus| {
+        log!("Box clicked: {:?}", box_status);
+    };
+    let on_box_check = move |_| {
         spawn_local(async move {
-            // Create a client
-            let res = print_value(value).await.unwrap();
-            response.set(res);
+            let response = check_box_status().await.unwrap();
+            log!("Response: {:?}", response);
+            set_in_use_boxes.set(response.list);
         });
     };
 
+    let on_submit = move |ev: SubmitEvent| {
+        ev.prevent_default();
+        let target = ev.target().unwrap().unchecked_into::<HtmlFormElement>();
+        let form_data = FormData::new_with_form(&target).unwrap();
+        
+        // 获取box_id的值
+        let box_id = form_data
+            .get("box_id")
+            .as_string()
+            .unwrap_or_default();
+        
+        let file = form_data
+            .get("file_to_upload")
+            .unchecked_into::<web_sys::File>();
+        let filename = file.name();
+        
+        log!("提交的box_id: {}", box_id);
+        log!("提交的文件名: {}", filename);
+        
+        spawn_local(async move {
+            let upload_response = upload_file(form_data.into()).await.unwrap();
+            log!("Upload response: {:?}", upload_response);
+            set_in_use_boxes.set(upload_response.list);
+        });
+    };
+    Effect::new( move |_| {
+        on_box_check(());
+    });
+
     view! {
-        <h1>"Welcome to Leptos!"</h1>
+        <div class="grid-container">
+            {(0..GRID_SIZE).map(move |row| {
+                (0..GRID_SIZE).map(move |col| {
+                    let current_id = (row * GRID_SIZE + col) as u8;
+                    let box_info = Memo::new(move |_| {
+                        in_use_boxes.get().iter().find(|b| b.id == current_id).cloned()
+                    });
+
+                    let cell_class = move || {
+                        match box_info.get() {
+                            Some(status) if status.in_use => "grid-cell filled",
+                            _ => "grid-cell empty",
+                        }
+                    };
+                    
+                    view! {
+                        <div
+                            class=cell_class
+                            on:click=move |_| {
+                                if let Some(info) = box_info.get() {
+                                    on_box_click(info);
+                                }
+                            }
+                        >
+                        </div>
+                    }
+                }).collect_view()
+            }).collect_view()}
+        </div>
         <div>
-            <button on:click=on_click>"Click Me: " {count}</button>
+            <button on:click=move |_| on_box_check(())>
+                "Check Box Status"
+            </button>
         </div>
         <div style="margin-top: 20px;">
-            <h2>"Send POST Request to Server"</h2>
-            <input 
-                type="text" 
-                placeholder="Enter value to send" 
-                on:input=move |ev| {
-                    let value = event_target_value(&ev);
-                    input_value.set(value);
-                }
-                prop:value=input_value
-            />
-            <button on:click=send_post_request>"Send to Server"</button>
-            <div style="margin-top: 10px;">
-                <p>"Server Response: " {response}</p>
-            </div>
+            <form on:submit=on_submit>
+                <input type="text" name="box_id" />
+                <input type="file" name="file_to_upload" />
+                <input type="submit" />
+            </form>
         </div>
     }
 }
